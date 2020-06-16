@@ -1,0 +1,35 @@
+#!/usr/bin/php
+<?php
+//var_dump($argc); //返回参数总个数
+//var_dump($argv);
+define('BOOT', __DIR__);
+spl_autoload_register(function ($className)
+{
+    require_once BOOT.'/'.$className.'.php';
+});
+require_once 'helper.php';
+$migrate = new \Base\Migrate();
+foreach ($argv as $value) {
+    $m = explode('-',$value);
+    if (count($m) == 3) {
+        list($k,$v) = explode('=',$m[2]);
+        $option[$k] = $v;
+    }elseif (count($m) == 2) {
+        list($k,$v) = explode('=',$m[1]);
+        $option[$k] = $v;
+    }
+}
+switch ($argv[1]) {
+    case 'make':
+        $isCreateModel =  (isset($argv[3]) && $argv[3] == 'nomodel') ? false : true ;
+        $migrate->make($argv[2], $isCreateModel);
+        break;
+    case 'run':
+        $migrate->run();
+        break;
+    case 'back':
+        $num = $option['num'] ?? 1;
+        $file = $option['file'] ?? '';
+        $migrate->back($num,$file);
+        break;
+}
