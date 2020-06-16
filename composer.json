@@ -22,7 +22,8 @@
             "Base\\": "Base/"
         },
         "files": [
-            "bootstrap.php"
+            "bootstrap.php",
+            "helper.php"
         ]
     },
     "minimum-stability": "dev",

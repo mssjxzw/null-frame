@@ -1,7 +1,11 @@
 <?php
 function load()
 {
-    require_once 'helper.php';
+    spl_autoload_register(function ($className)
+    {
+        if (file_exists(BOOT.DIRECTORY_SEPARATOR.$className.'.php')) require_once BOOT.DIRECTORY_SEPARATOR.$className.'.php';
+
+    });
     $controller_path = '/Controllers/';
     $model_path = '/Models/';
     $validation_path = '/Request/';
