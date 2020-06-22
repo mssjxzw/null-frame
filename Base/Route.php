@@ -12,6 +12,8 @@ class Route
 
     private function __construct()
     {
+        if (!is_dir(BOOT.'/Config/')) mkdir(BOOT.'/Config/',755);
+        if (!file_exists(BOOT.'/Config/route.php')) file_put_contents(BOOT.'/Config/route.php',$this->getConfigTemple());
         $config = config('route');
         foreach ($config as $function => $info) {
             $domain = explode('@', $function);
@@ -103,5 +105,12 @@ class Route
             $obj = new $middlewareObj();
             $obj();
         }
+    }
+
+    public function getConfigTemple()
+    {
+        return '<?php
+return [];
+';
     }
 }
