@@ -7,27 +7,27 @@ namespace Base;
 class Mysql
 {
     private static $con;
-    private array $config;
-    protected string $table = '';
-    protected string $field = '';
-    protected string $where = '';
-    protected string $join = '';
-    protected string $prefix = '';
-    protected array $orderBy = [];
-    protected int $limit = 0;
-    protected int $offset = 0;
-    protected bool $isFetchSql = false;
-    protected bool $isExplain = false;
-    protected array $creat_table = [
-        'table' =>  '',
-        'prefix'=>  '',
-        'field' =>  [],
-        'key'   =>  '',
-        'index' =>  [],
-        'engine'=>  '',
-        'charset'=> '',
+    private  $config;
+    protected  $table = '';
+    protected  $field = '';
+    protected  $where = '';
+    protected  $join = '';
+    protected  $prefix = '';
+    protected  $orderBy = [];
+    protected  $limit = 0;
+    protected  $offset = 0;
+    protected  $isFetchSql = false;
+    protected  $isExplain = false;
+    protected  $make_table = [
+        'table'         =>  '',
+        'prefix'        =>  '',
+        'field'         =>  [],
+        'key'           =>  '',
+        'index'         =>  [],
+        'engine'        =>  '',
+        'charset'       =>  '',
     ];
-    protected array $errors = [];
+    protected  $errors = [];
 
     function __construct($table = '',$prefix = '')
     {
@@ -388,72 +388,84 @@ class Mysql
         return $this->exec('truncate table '.$this->table);
     }
 
+    public function showColumns()
+    {
+        return self::$con->query('SHOW COLUMNS FROM `'.$this->table.'`')->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
     public function setField(string $field,array $config):object
     {
         if (!$field || !$config) return (object)[];
-        $this->creat_table['field'][$field] = $config;
+        $this->make_table['field'][$field] = $config;
         return $this;
     }
 
     public function setFields(array $fields):object
     {
         if (!$fields) return (object)[];
-        $this->creat_table['field'] = array_merge($this->creat_table['field'],$fields);
+        $this->make_table['field'] = array_merge($this->make_table['field'],$fields);
         return $this;
     }
 
     public function setTable(string $table):object
     {
         if (!$table) return (object)[];
-        $this->creat_table['table'] = $table;
+        $this->make_table['table'] = $table;
         return $this;
     }
 
     public function setIndex(string $field,string $type):object
     {
         if (!$field || !$type) return (object)[];
-        $this->creat_table['index'][$field] = $type;
+        $this->make_table['index'][$field] = $type;
         return $this;
     }
 
     public function setIndexs(array $indexs):object
     {
         if (!$indexs) return (object)[];
-        $this->creat_table['index'] = array_merge($this->creat_table['index'],$indexs);
+        $this->make_table['index'] = array_merge($this->make_table['index'],$indexs);
         return $this;
     }
 
     public function setEngine(string $engine):object
     {
         if (!$engine) return (object)[];
-        $this->creat_table['engine'] = $engine;
+        $this->make_table['engine'] = $engine;
         return $this;
     }
 
     public function setCharset($charset):object
     {
         if (!$charset) return (object)[];
-        $this->creat_table['charset'] = $charset;
+        $this->make_table['charset'] = $charset;
         return $this;
     }
 
     public function setKey(string $key):object
     {
         if (!$key) return (object)[];
-        $this->creat_table['key'] = $key;
+        $this->make_table['key'] = $key;
+        return $this;
+    }
+
+    public function setPrefix(string $prefix):object
+    {
+        if (!$prefix) return (object)[];
+        $this->make_table['prefix'] = $prefix;
         return $this;
     }
 
     public function createTable():bool
     {
-        if (!$this->creat_table['prefix']) $this->creat_table['prefix'] = $this->config['prefix']??'';
-        $sql = 'CREATE TABLE `'.$this->creat_table['prefix'].$this->creat_table['table'].'`(';
+        if (!$this->make_table['prefix']) $this->make_table['prefix'] = $this->config['prefix']??'';
+        $sql = 'CREATE TABLE `'.$this->make_table['prefix'].$this->make_table['table'].'`(';
 
-        if (!$this->creat_table['field']) {
-            $this->error[] = $this->creat_table['prefix'].$this->creat_table['table'].':field don\'t be empty!';
+        if (!$this->make_table['field']) {
+            $this->error[] = $this->make_table['prefix'].$this->make_table['table'].':field don\'t be empty!';
             return false;
         }
-        foreach ($this->creat_table['field'] as $field => $info) {
+        foreach ($this->make_table['field'] as $field => $info) {
             $sql .= " `$field` ".$info['type'];
             if (isset($info['length']) && $info['length']) $sql .= '('.$info['length'].')';
             if (isset($info['unsigned']) && $info['unsigned']) $sql .= ' UNSIGNED';
@@ -464,26 +476,85 @@ class Mysql
             $sql .= ',';
         }
 
-        if (isset($this->creat_table['index']) && $this->creat_table['index'] && is_array($this->creat_table['index'])) {
-            foreach ($this->creat_table['index'] as $field => $type) {
+        if (isset($this->make_table['index']) && $this->make_table['index'] && is_array($this->make_table['index'])) {
+            foreach ($this->make_table['index'] as $field => $type) {
                 $sql .= " $type $field($field),";
             }
         }
 
-        if (isset($this->creat_table['key']) && $this->creat_table['key']) $sql .= ' PRIMARY KEY ( `'.$this->creat_table['key'].'` ),';
+        if (isset($this->make_table['key']) && $this->make_table['key']) $sql .= ' PRIMARY KEY ( `'.$this->make_table['key'].'` ),';
         $sql = substr($sql,0,-1);
         $sql .= ')';
 
-        if (isset($this->creat_table['engine']) && $this->creat_table['engine']) {
-            $sql .= ' ENGINE='.$this->creat_table['engine'];
+        if (isset($this->make_table['engine']) && $this->make_table['engine']) {
+            $sql .= ' ENGINE='.$this->make_table['engine'];
         } elseif (isset($this->config['engine']) && $this->config['engine']) {
             $sql .= ' ENGINE='.$this->config['engine'];
         } else {
             $sql .= ' ENGINE=InnoDB';
         }
 
-        if (isset($this->creat_table['charset']) && $this->creat_table['charset']) $sql .= ' DEFAULT CHARSET='.$this->creat_table['charset'];
+        if (isset($this->make_table['charset']) && $this->make_table['charset']) $sql .= ' DEFAULT CHARSET='.$this->make_table['charset'];
 
+        self::$con->exec($sql);
+        return true;
+    }
+
+    public function addFields(array $add)
+    {
+        if (!$this->make_table['prefix']) $this->make_table['prefix'] = $this->config['prefix']??'';
+        $table = $this->make_table['prefix'].$this->make_table['table'];
+        $add_sql = "alter table $table add (";
+        $n = 0;
+        foreach ($add as $field => $attributes) {
+            if ($n > 0) $add_sql .= ',';
+            $add_sql .= $field.' '.$attributes['type'];
+            if (isset($attributes['length']) && $attributes['length']) $add_sql .= '('.$attributes['length'].')';
+            if (isset($attributes['unsigned']) && $attributes['unsigned']) $add_sql .= ' UNSIGNED';
+            if (isset($attributes['need']) && $attributes['need']) $add_sql .= ' NOT NULL';
+            if (isset($attributes['default']) && $attributes['default'] !== null) $add_sql .= ' default "'.$attributes['default'].'"';
+            if (isset($attributes['auto_inc']) && $attributes['auto_inc']) $add_sql .= ' AUTO_INCREMENT';
+            if (isset($attributes['comment']) && $attributes['comment']) $add_sql .= ' COMMENT \''.$attributes['comment'].'\'';
+            $n++;
+        }
+        $add_sql .= ')';
+        self::$con->exec($add_sql);
+        return true;
+    }
+
+    public function changeFields(array $change)
+    {
+        if (!$this->make_table['prefix']) $this->make_table['prefix'] = $this->config['prefix']??'';
+        $table = $this->make_table['prefix'].$this->make_table['table'];
+        $sql = "alter table $table ";
+        $n = 0;
+        foreach ($change as $name => $attributes) {
+            if ($n > 0) $sql .= ',';
+            if (isset($attributes['rename']) && $attributes['rename']) {
+                $sql .= " change $name ".$attributes['rename'].' '.$attributes['type'];
+            } else {
+                $sql .= " change $name $name ".$attributes['type'];
+            }
+            if (isset($attributes['length']) && $attributes['length']) $sql .= '('.$attributes['length'].')';
+            if (isset($attributes['unsigned']) && $attributes['unsigned']) $sql .= ' UNSIGNED';
+            if (isset($attributes['need']) && $attributes['need']) $sql .= ' NOT NULL';
+            if (isset($attributes['default']) && $attributes['default'] !== null) $sql .= ' default "'.$attributes['default'].'"';
+            if (isset($attributes['auto_inc']) && $attributes['auto_inc']) $sql .= ' AUTO_INCREMENT';
+            if (isset($attributes['comment']) && $attributes['comment']) $sql .= ' COMMENT \''.$attributes['comment'].'\'';
+        }
+        self::$con->exec($sql);
+        return true;
+    }
+
+    public function dropFields(array $drop)
+    {
+        if (!$this->make_table['prefix']) $this->make_table['prefix'] = $this->config['prefix']??'';
+        $table = $this->make_table['prefix'].$this->make_table['table'];
+        $sql = "alter table $table";
+        foreach ($drop as $key => $field) {
+            if ($key > 0) $sql .= ',';
+            $sql .= ' drop '.$field;
+        }
         self::$con->exec($sql);
         return true;
     }
@@ -498,66 +569,25 @@ class Mysql
         return reset($this->errors);
     }
 
-    public function commandChangeField($config)
+    public function renameTable($name)
     {
-        if (!isset($config['change field']) || $config['change field']) throw new \Exception('change field error!');
-        println('start change field '.$config['table']);
-        if (!isset($config['prefix']) || !$config['prefix']) $config['prefix'] = config('mysql', 'prefix')??'';
-        $sql = 'alter table '.$config['prefix'].$config['table'];
-        foreach ($config['change field'] as $key => $field) {
-            if ($key > 0) $sql .= ',';
-            if (isset($field['rename']) && $field['rename']) {
-                $sql .= ' change '.$field['name'].' '.$field['rename'].' '.$field['type'];
-            } else {
-                $sql .= ' change '.$field['name'].' '.$field['name'].' '.$field['type'];
-            }
-            if (isset($field['length']) && $field['length']) $sql .= '('.$field['length'].')';
-        }
-        self::$con->exec($sql);
-        println('finish change field '.$config['table']);
+        if (!$this->make_table['prefix']) $this->make_table['prefix'] = $this->config['prefix']??'';
+        $table = $this->make_table['prefix'].$this->make_table['table'];
+        $rename = $this->make_table['prefix'].$name;
+        self::$con->exec("ALTER TABLE $table RENAME TO $rename");
         return true;
     }
 
-    public function commandRenameTable($config)
+    public function dropTables(string $table)
     {
-        if (!isset($config['rename'])) throw new \Exception('no rename!');
-        println('start rename table '.$config['table']);
-        if (!isset($config['prefix']) || !$config['prefix']) $config['prefix'] = config('mysql', 'prefix')??'';
-        $sql = 'ALTER TABLE '.$config['prefix'].$config['table'].' RENAME TO '.$config['prefix'].$config['rename'];
-        self::$con->exec($sql);
-        println('finish rename table '.$config['table']);
-        return true;
-    }
-
-    public function commandAddField($config)
-    {
-        if (!isset($config['add field']) || $config['add field'] || !is_array($config['add field'])) throw new \Exception('add field error!');
-        println('start add field '.$config['table']);
-        if (!isset($config['prefix']) || !$config['prefix']) $config['prefix'] = config('mysql', 'prefix')??'';
-        $sql = 'alter table '.$config['prefix'].$config['table'].' add (';
-        foreach ($config['add field'] as $key => $field) {
-            if ($key > 0) $sql .= ',';
-            $sql .= $field['name'].' '.$field['type'];
-            if (isset($field['length']) && $field['length']) $sql .= '('.$field['length'].')';
-        }
-        $sql .= ')';
-        self::$con->exec($sql);
-        println('finish add field '.$config['table']);
-        return true;
-    }
-
-    public function commandDropField($config)
-    {
-        if (!isset($config['drop field']) || $config['drop field'] || !is_array($config['drop field'])) throw new \Exception('drop field error!');
-        println('start drop field '.$config['table']);
-        if (!isset($config['prefix']) || !$config['prefix']) $config['prefix'] = config('mysql', 'prefix')??'';
-        $sql = 'alter table '.$config['prefix'].$config['table'];
-        foreach ($config['drop field'] as $key => $field) {
-            if ($key > 0) $sql .= ',';
-            $sql .= ' drop '.$field;
-        }
-        self::$con->exec($sql);
-        println('finish drop field '.$config['table']);
+        if (!$this->make_table['prefix']) $this->make_table['prefix'] = $this->config['prefix']??'';
+        $prefix = $this->make_table['prefix'];
+        $table = explode(',', $table);
+        $table = array_map(function ($value) use ($prefix) {
+            return $prefix.$value;
+        },$table);
+        $table = implode(',',$table);
+        self::$con->exec("DROP TABLE $table");
         return true;
     }
 

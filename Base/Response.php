@@ -7,12 +7,12 @@ namespace Base;
 class Response
 {
     private static $obj;
-    public int $code = 200;
-    public string $message = 'success';
-    private string $root_path = '/Views/';
-    public array $data = [];
-    public string $type = 'json';
-    public string $view_path;
+    public $code = 200;
+    public $message = 'success';
+    private $root_path = '/Views/';
+    public $data = [];
+    public $type = 'json';
+    public $view_path;
 
     private function __construct()
     {

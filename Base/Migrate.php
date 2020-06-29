@@ -5,9 +5,9 @@ namespace Base;
 
 class Migrate
 {
-    private string $dbPath = BOOT.'/Database/';
-    private string $modelPath = BOOT.'/Models/';
-    private string $ext = '.php';
+    private $dbPath = BOOT.'/Database/';
+    private $modelPath = BOOT.'/Models/';
+    private $ext = '.php';
 
     public function __construct()
     {
@@ -17,21 +17,35 @@ class Migrate
 
     /**
      * 生成迁移文件
+     * @param $action
      * @param $class
      * @param bool $isCreateModel
      * @return bool
      */
-    public function make($class, $isCreateModel = true)
+    public function make($action, $class, $isCreateModel = true)
     {
         if (!is_dir($this->dbPath)) {
             mkdir($this->dbPath,755);
         }
-        $filename = $this->dbPath.date('Ymdhis').$class.$this->ext;
+        $filename = $this->dbPath.date('Ymdhis').convertUnderline($action).$class.$this->ext;
         $table = makeUnderline($class);
-        $migrate = $this->getMigrateTemplate($table);
+        switch ($action) {
+            case 'create':
+                $migrate = $this->getCreateMigrateTemplate($table);
+                break;
+            case 'update':
+                $migrate = $this->getUpdateMigrateTemplate($table);
+                break;
+            case 'rename':
+                $migrate = $this->getRenameMigrateTemplate($table);
+                break;
+            case 'drop':
+                $migrate = $this->getDropMigrateTemplate($table);
+                break;
+        }
         file_put_contents($filename,$migrate);
         println('finish make migrate');
-        if (!file_exists($modelPath = $this->modelPath.$class.$this->ext) && $isCreateModel) {
+        if (!file_exists($modelPath = $this->modelPath.$class.$this->ext) && $isCreateModel && $action == 'create') {
             $model = $this->getModelTemplate($table,$class);
             file_put_contents($modelPath,$model);
             println('finish make model');
@@ -56,10 +70,11 @@ class Migrate
                 $config = require $this->dbPath.$filename;
                 if (!isset($config['action'])) throw new \Exception('action error!');
                 if (!isset($config['table']) || !is_string($config['table']) || !$config['table']) throw new \Exception($filename.':config table error!');
-                if (!isset($config['field']) || !is_array($config['field']) || !$config['field']) throw new \Exception($filename.':config field error!');
                 switch ($config['action']) {
                     case 'create table':
+                        if (!isset($config['field']) || !is_array($config['field']) || !$config['field']) throw new \Exception($filename.':config field error!');
                         $create = $mysql->setTable($config['table'])->setFields($config['field']);
+                        if (isset($config['prefix']) && is_string($config['prefix']) && $config['prefix']) $create = $create->setPrefix($config['prefix']);
                         if (isset($config['key']) && is_string($config['key']) && $config['key']) $create = $create->setKey($config['key']);
                         if (isset($config['index']) && is_array($config['index']) && $config['index']) $create = $create->setIndexs($config['index']);
                         if (isset($config['engine']) && is_string($config['engine']) && $config['engine']) $create = $create->setEngine($config['engine']);
@@ -68,14 +83,27 @@ class Migrate
                         println('create '.$config['table'].' complete！');
                         break;
 
-                    case 'change field':
-                        if (isset($config['add field']) && is_array($config['add field']) && $config['add field']) $mysql->commandAddField($config);
-                        if (isset($config['change field']) && is_array($config['change field']) && $config['change field']) $mysql->commandChangeField($config);
-                        if (isset($config['drop field']) && is_array($config['drop field']) && $config['drop field']) $mysql->commandDropField($config);
+                    case 'update field':
+                        $change = $mysql->setTable($config['table']);
+                        if (isset($config['prefix']) && is_string($config['prefix']) && $config['prefix']) $change = $change->setPrefix($config['prefix']);
+                        if (isset($config['add field']) && is_array($config['add field']) && $config['add field']) $change->addFields($config['add field']);
+                        if (isset($config['change field']) && is_array($config['change field']) && $config['change field']) $change->changeFields($config['change field']);
+                        if (isset($config['drop field']) && is_array($config['drop field']) && $config['drop field']) $change->dropFields($config['drop field']);
                         break;
 
                     case "rename table":
-                        $mysql->commandRenameTable($config);
+                        if (!isset($config['rename']) || !is_string($config['rename']) || !$config['rename']) throw new \Exception($filename.':config rename error!');
+                        $rename = $mysql->setTable($config['table']);
+                        if (isset($config['prefix']) && is_string($config['prefix']) && $config['prefix']) $rename = $rename->setPrefix($config['prefix']);
+                        $rename->renameTable($config['rename']);
+                        println('rename '.$config['table'].' complete！');
+                        break;
+
+                    case 'drop table':
+                        $drop = $mysql;
+                        if (isset($config['prefix']) && is_string($config['prefix']) && $config['prefix']) $drop = $drop->setPrefix($config['prefix']);
+                        $drop->dropTables($config['table']);
+                        println('drop '.$config['table'].' complete！');
                         break;
 
                     default:
@@ -140,9 +168,8 @@ class Migrate
      * @param $table
      * @return string
      */
-    private function getMigrateTemplate($table)
+    private function getCreateMigrateTemplate($table)
     {
-        $prefix = config('mysql', 'prefix');
         return  "<?php
 return [
     'table'     =>  '{$table}',
@@ -161,6 +188,63 @@ return [
         ],
     ],
     'key'       =>  'id',
+];";
+    }
+
+    /**
+     * 获取更新字段模板
+     * @param $table
+     * @return string
+     */
+    private function getUpdateMigrateTemplate($table)
+    {
+        return  "<?php
+return [
+    'table'     =>  '{$table}',
+    'action'    =>  'update field',
+    'add'       =>  [
+        'example'    =>  [
+            'type'      =>  'bigint',
+            'unsigned'  =>  true,
+            'auto_inc'  =>  true,
+        ],
+    ],
+    'change'    =>  [
+        'example'    =>  [
+            'rename'      =>  'example2',
+            'type'      =>  '',
+        ],
+    ],
+    'drop'      =>  ['example1','example2','example3'],
+];";
+    }
+
+    /**
+     * 获取重命名模板
+     * @param $table
+     * @return string
+     */
+    private function getRenameMigrateTemplate($table)
+    {
+        return  "<?php
+return [
+    'table'     =>  '{$table}',
+    'action'    =>  'rename table',
+    'rename'    =>  '',
+];";
+    }
+
+    /**
+     * 获取删表模板
+     * @param $table
+     * @return string
+     */
+    private function getDropMigrateTemplate($table)
+    {
+        return  "<?php
+return [
+    'table'     =>  '{$table}',
+    'action'    =>  'drop table',
 ];";
     }
 

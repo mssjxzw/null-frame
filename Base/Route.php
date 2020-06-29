@@ -7,8 +7,8 @@ namespace Base;
 class Route
 {
     private static $route;
-    private array $map = [];
-    private array $name = [];
+    private $map = [];
+    private $name = [];
 
     private function __construct()
     {

@@ -6,9 +6,9 @@ namespace Base;
 
 abstract class Queue
 {
-    protected int $every_workload = 1;
-    protected int $exec_time = 0;
-    protected array $data;
+    protected  $every_workload = 1;
+    protected  $exec_time = 0;
+    protected  $data;
 
     public function __construct($data)
     {

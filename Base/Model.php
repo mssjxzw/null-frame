@@ -6,12 +6,12 @@ namespace Base;
 
 class Model
 {
-    protected bool $timestamp = true;
-    protected string $created = 'created';
-    protected string $updated = 'updated';
-    private bool $original = false;
-    private string $type = 'obj';
-    private static array $mysqls = [];
+    protected  $timestamp = true;
+    protected  $created = 'created';
+    protected  $updated = 'updated';
+    private  $original = false;
+    private  $type = 'obj';
+    private static  $mysqls = [];
 
     public function __call($name, $arguments)
     {

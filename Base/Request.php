@@ -5,12 +5,12 @@ namespace Base;
 class Request
 {
     private static $self;
-    private string $path;
-    private string $method;
-    private array $query;
-    private array $body;
-    private array $header;
-    private array $rest;
+    private  $path;
+    private  $method;
+    private  $query;
+    private  $body;
+    private  $header;
+    private  $rest;
 
     private function __construct()
     {

@@ -6,10 +6,10 @@ namespace Base;
 
 class FileSystem
 {
-    private int $size_limit;
-    private array $type_limit = [];
-    private array $extension = [];
-    private string $path;
+    private $size_limit;
+    private $type_limit = [];
+    private $extension = [];
+    private $path;
 
     public function __construct($ini = [])
     {
